@@ -1,8 +1,8 @@
-import Calculator from "@/components/Calculator";
+import Header from "@/components/Header";
 import Result from "@/components/Result";
+import Calculator from "@/components/Calculator";
 import { RandomFact } from "@/components/Facts";
 import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 
 export default function Home() {
   return (

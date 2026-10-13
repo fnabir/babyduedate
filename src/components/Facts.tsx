@@ -24,6 +24,8 @@ const RandomFact = () => {
     return () => clearInterval(id);
   }, []);
 
+  if (!factsLength || FACTS[factIndex] === undefined) return null;
+
   return (
     <motion.section
       layout
