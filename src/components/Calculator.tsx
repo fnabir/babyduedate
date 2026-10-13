@@ -36,7 +36,7 @@ import type { Method } from "@/libs/types";
 const style = {
   label: "block font-display text-sm font-semibold mb-1",
   input:
-    "w-full rounded-xl border border-line bg-canvas px-4 py-2 font-display text-lg font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink transition",
+    "w-full rounded-xl border border-line bg-canvas px-3 sm:px-4 py-1.5 sm:py-2 font-display text-base sm:text-lg font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink transition",
 };
 
 const isMethod = (value: string | undefined): value is Method =>
@@ -136,7 +136,7 @@ export default function Calculator() {
         exit={{ opacity: 0, y: -10, height: 0 }}
         transition={{ duration: 0.3, delay: 0.3, layout: { duration: 0.3 } }}
         aria-label="Calculator"
-        className="rounded-[1.25rem] border border-line bg-surface p-6 max-w-full w-2xl"
+        className="max-w-full w-2xl"
       >
         <AnimatePresence mode="wait" initial={false}>
           {!showCalculateNew ? (
@@ -146,30 +146,52 @@ export default function Calculator() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
+              className="rounded-[1.25rem] border border-line bg-surface p-3 sm:p-6 space-y-4"
             >
-              <fieldset className="mb-5">
-                <legend className="font-display text-[1rem] font-semibold">
-                  Count based on
-                </legend>
-                <div className="grid gap-1 rounded-xl border border-line bg-canvas p-1 grid-cols-3">
-                  {METHODS.map((m) => (
-                    <label
-                      key={m.id}
-                      className="cursor-pointer rounded-lg px-2 py-2.5 text-center content-center font-display text-sm font-semibold text-muted transition-colors has-checked:bg-ink has-checked:text-canvas has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
+              <p className="text-muted text-sm lg:text-xl">
+                Choose how you want to count, enter one date, and see your
+                estimated due date and how far along you are.
+              </p>
+              <div>
+                <fieldset>
+                  <legend className="font-display text-[1rem] font-semibold">
+                    Count based on
+                  </legend>
+                  <div className="grid gap-1 rounded-xl border border-line bg-canvas p-1 grid-cols-3">
+                    {METHODS.map((m) => (
+                      <label
+                        key={m.id}
+                        className="cursor-pointer rounded-lg px-2 py-2.5 text-center content-center font-display text-sm font-semibold text-muted transition-colors has-checked:bg-ink has-checked:text-canvas has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
+                      >
+                        <input
+                          type="radio"
+                          name="method"
+                          value={m.id}
+                          checked={method === m.id}
+                          onChange={() => dispatch(setMethod(m.id))}
+                          className="sr-only"
+                        />
+                        {m.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <motion.div layout className="overflow-hidden mt-1">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.p
+                      key={method}
+                      initial={{ opacity: 0, y: 4, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, y: -4, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className=" text-sm sm:text-base text-muted min-h-12 lg:min-h-8"
                     >
-                      <input
-                        type="radio"
-                        name="method"
-                        value={m.id}
-                        checked={method === m.id}
-                        onChange={() => dispatch(setMethod(m.id))}
-                        className="sr-only"
-                      />
-                      {m.label}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+                      {current.hint}
+                    </motion.p>
+                  </AnimatePresence>
+                </motion.div>
+              </div>
 
               <motion.div layout className="flex flex-col md:flex-row gap-2">
                 <motion.div
@@ -229,22 +251,7 @@ export default function Calculator() {
                 </AnimatePresence>
               </motion.div>
 
-              <motion.div layout className="overflow-hidden">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.p
-                    key={method}
-                    initial={{ opacity: 0, y: 4, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: "auto" }}
-                    exit={{ opacity: 0, y: -4, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-2 text-base text-muted min-h-12 lg:min-h-8"
-                  >
-                    {current.hint}
-                  </motion.p>
-                </AnimatePresence>
-              </motion.div>
-
-              <div className="mt-4 rounded-xl border border-line bg-canvas px-4 py-3">
+              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="font-display text-sm font-semibold text-ink">
@@ -281,7 +288,7 @@ export default function Calculator() {
                 type="button"
                 onClick={() => dispatch(calculate())}
                 disabled={!canCalculate}
-                className="mt-5 w-full rounded-xl bg-ink px-4 py-3 font-display text-base font-semibold text-canvas cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Calculate
               </button>
@@ -293,7 +300,7 @@ export default function Calculator() {
                     animate={{ opacity: 1, y: 0, height: "auto" }}
                     exit={{ opacity: 0, y: -4, height: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="mt-2 text-sm text-muted"
+                    className="-mt-2 text-sm text-ink"
                   >
                     {outOfRangeMessage}
                   </motion.p>
@@ -311,7 +318,7 @@ export default function Calculator() {
               <button
                 type="button"
                 onClick={() => dispatch(startNewCalculation())}
-                className="w-full rounded-xl bg-ink px-4 py-3 font-display text-base font-semibold text-canvas cursor-pointer"
+                className="w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer"
               >
                 Calculate new
               </button>
