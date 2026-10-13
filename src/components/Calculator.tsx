@@ -89,6 +89,7 @@ export default function Calculator() {
     const rememberMeCookie = Cookies.get(CALCULATOR_REMEMBER_ME_KEY) === "true";
 
     if (!rememberMeCookie) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCookiesReady(true);
       return;
     }
