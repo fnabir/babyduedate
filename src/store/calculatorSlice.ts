@@ -29,6 +29,7 @@ type CalculatorState = {
   today: number | null;
   rememberMe: boolean;
   submitted: CalculationInput | null;
+  isCalculating: boolean;
 };
 
 const clampCycle = (value: number) => Math.min(45, Math.max(21, value));
@@ -40,6 +41,7 @@ const defaultState: CalculatorState = {
   today: null,
   rememberMe: false,
   submitted: null,
+  isCalculating: false,
 };
 
 const initialState: CalculatorState = defaultState;
@@ -90,6 +92,9 @@ const calculatorSlice = createSlice({
         cycle: clampCycle(state.cycle),
       };
     },
+    setIsCalculating: (state, action: PayloadAction<boolean>) => {
+      state.isCalculating = action.payload;
+    },
     startNewCalculation: (state) => {
       state.submitted = null;
     },
@@ -104,6 +109,7 @@ export const {
   setRememberMe,
   hydrateFromCookies,
   calculate,
+  setIsCalculating,
   startNewCalculation,
 } = calculatorSlice.actions;
 
@@ -115,6 +121,8 @@ export const selectToday = (state: RootState) => state.calculator.today;
 export const selectRememberMe = (state: RootState) =>
   state.calculator.rememberMe;
 export const selectSubmitted = (state: RootState) => state.calculator.submitted;
+export const selectIsCalculating = (state: RootState) =>
+  state.calculator.isCalculating;
 
 export const selectCurrentMethod = createSelector([selectMethod], (method) => {
   return METHODS.find((item) => item.id === method) ?? METHODS[0];
