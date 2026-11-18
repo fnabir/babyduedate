@@ -35,7 +35,7 @@ const RandomFact = () => {
       aria-labelledby="fact-heading"
       role="region"
       aria-live="polite"
-      className="p-4 rounded-2xl bg-surface border border-line max-w-full w-2xl"
+      className="p-4 rounded-2xl bg-surface border border-line max-w-full w-2xl mx-auto my-4"
     >
       <h2 id="fact-heading" className="text-xl font-semibold font-display mb-2">
         Did you know?
