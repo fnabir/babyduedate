@@ -1,7 +1,6 @@
 import Header from "@/components/Header";
-import Result from "@/components/Result";
 import Calculator from "@/components/Calculator";
-import { RandomFact } from "@/components/Facts";
+import ResultAndFacts from "@/components/ResultAndFacts";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -9,8 +8,7 @@ export default function Home() {
     <main className="min-h-screen flex flex-col gap-8 items-center justify-start px-4 lg:px-16 py-12 lg:py-16 leading-relaxed text-lg">
       <Header />
       <Calculator />
-      <Result />
-      <RandomFact />
+      <ResultAndFacts />
       <Footer />
     </main>
   );
