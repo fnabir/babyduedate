@@ -31,6 +31,7 @@ export default function RootLayout({
     <html
       lang="en-GB"
       className={`${bricolage.variable} ${newsreader.variable}`}
+      suppressHydrationWarning
     >
       <body className="font-serif">
         <StoreProvider>{children}</StoreProvider>

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { METHODS } from "@/libs/methods";
 import { formattedDate, todayUTC } from "@/libs/utils";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import Loader from "./Loader";
 import {
   CALCULATOR_CYCLE_KEY,
   CALCULATOR_DATE_KEY,
@@ -21,10 +22,12 @@ import {
   selectCurrentMethod,
   selectCycle,
   selectDate,
+  selectIsCalculating,
   selectMethod,
   selectRememberMe,
   setCycle,
   setDate,
+  setIsCalculating,
   setMethod,
   setRememberMe,
   setToday,
@@ -45,6 +48,8 @@ const isMethod = (value: string | undefined): value is Method =>
 export default function Calculator() {
   const dispatch = useAppDispatch();
   const [cookiesReady, setCookiesReady] = useState(false);
+  const [isCheckingCookies, setIsCheckingCookies] = useState(true);
+  const isCalculating = useAppSelector(selectIsCalculating);
   const date = useAppSelector(selectDate);
   const cycle = useAppSelector(selectCycle);
   const method = useAppSelector(selectMethod);
@@ -89,22 +94,51 @@ export default function Calculator() {
     const rememberMeCookie = Cookies.get(CALCULATOR_REMEMBER_ME_KEY) === "true";
 
     if (!rememberMeCookie) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCookiesReady(true);
+      setTimeout(() => {
+        setIsCheckingCookies(false);
+        setCookiesReady(true);
+      }, 500);
       return;
     }
 
     const cookieMethod = Cookies.get(CALCULATOR_METHOD_KEY);
     const cookieDate = Cookies.get(CALCULATOR_DATE_KEY) ?? "";
     const cookieCycle = Number(Cookies.get(CALCULATOR_CYCLE_KEY));
-    dispatch(
-      hydrateFromCookies({
-        rememberMe: true,
-        method: isMethod(cookieMethod) ? cookieMethod : "period",
-        date: cookieDate,
-        cycle: Number.isFinite(cookieCycle) ? cookieCycle : 28,
-      }),
-    );
+
+    if (isMethod(cookieMethod) && cookieDate && Number.isFinite(cookieCycle)) {
+      dispatch(
+        hydrateFromCookies({
+          rememberMe: true,
+          method: cookieMethod,
+          date: cookieDate,
+          cycle: cookieCycle,
+        }),
+      );
+
+      setTimeout(() => {
+        setIsCheckingCookies(false);
+        dispatch(setIsCalculating(true));
+        dispatch(calculate());
+
+        setTimeout(() => {
+          dispatch(setIsCalculating(false));
+        }, 1000);
+      }, 500);
+    } else {
+      dispatch(
+        hydrateFromCookies({
+          rememberMe: true,
+          method: isMethod(cookieMethod) ? cookieMethod : "period",
+          date: cookieDate,
+          cycle: Number.isFinite(cookieCycle) ? cookieCycle : 28,
+        }),
+      );
+      setTimeout(() => {
+        setIsCheckingCookies(false);
+      }, 500);
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCookiesReady(true);
   }, [dispatch]);
 
@@ -128,204 +162,227 @@ export default function Calculator() {
   }, [cookiesReady, rememberMe, method, date, cycle]);
 
   return (
-    <AnimatePresence>
-      <motion.section
-        layout
-        initial={{ opacity: 0, y: -10, height: 0 }}
-        animate={{ opacity: 1, y: 0, height: "auto" }}
-        exit={{ opacity: 0, y: -10, height: 0 }}
-        transition={{ duration: 0.3, delay: 0.3, layout: { duration: 0.3 } }}
-        aria-label="Calculator"
-        className="max-w-full w-2xl"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          {!showCalculateNew ? (
-            <motion.div
-              key="calculator-inputs"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-[1.25rem] border border-line bg-surface p-3 sm:p-6 space-y-4"
-            >
-              <p className="text-muted text-sm lg:text-xl">
-                Choose how you want to count, enter one date, and see your
-                estimated due date and how far along you are.
-              </p>
-              <div>
-                <fieldset>
-                  <legend className="font-display text-[1rem] font-semibold">
-                    Count based on
-                  </legend>
-                  <div className="grid gap-1 rounded-xl border border-line bg-canvas p-1 grid-cols-3">
-                    {METHODS.map((m) => (
-                      <label
-                        key={m.id}
-                        className="cursor-pointer rounded-lg px-2 py-2.5 text-center content-center font-display text-sm font-semibold text-muted transition-colors has-checked:bg-ink has-checked:text-canvas has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
-                      >
-                        <input
-                          type="radio"
-                          name="method"
-                          value={m.id}
-                          checked={method === m.id}
-                          onChange={() => dispatch(setMethod(m.id))}
-                          className="sr-only"
-                        />
-                        {m.label}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <motion.div layout className="overflow-hidden mt-1">
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.p
-                      key={method}
-                      initial={{ opacity: 0, y: 4, height: 0 }}
-                      animate={{ opacity: 1, y: 0, height: "auto" }}
-                      exit={{ opacity: 0, y: -4, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className=" text-sm sm:text-base text-muted min-h-12 lg:min-h-8"
-                    >
-                      {current.hint}
-                    </motion.p>
-                  </AnimatePresence>
-                </motion.div>
-              </div>
-
-              <motion.div layout className="flex flex-col md:flex-row gap-2">
+    <>
+      <AnimatePresence mode="wait">
+        {isCheckingCookies ? (
+          <Loader key="loader-checking" message="Checking saved inputs" />
+        ) : isCalculating ? (
+          <Loader key="loader-calculating" message="Calculating" />
+        ) : (
+          <motion.section
+            key="calculator-section"
+            layout
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            transition={{
+              duration: 0.3,
+              delay: 0.3,
+              layout: { duration: 0.3 },
+            }}
+            aria-label="Calculator"
+            className="max-w-full w-2xl"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {!showCalculateNew ? (
                 <motion.div
-                  layout
-                  className="flex-1 min-w-0 p-1"
-                  transition={{ duration: 0.3 }}
+                  key="calculator-inputs"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="rounded-[1.25rem] border border-line bg-surface p-3 sm:p-6 space-y-4"
                 >
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.label
-                      htmlFor="date"
-                      className={style.label}
-                      key={method}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {current.field}
-                    </motion.label>
-                  </AnimatePresence>
-                  <input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => dispatch(setDate(e.target.value))}
-                    className={style.input}
-                    {...bounds}
-                  />
-                </motion.div>
-                <AnimatePresence initial={false}>
-                  {method === "period" && (
-                    <motion.div
-                      key="cycle"
-                      {...cycleMotion}
-                      transition={{ duration: 0.3 }}
-                      className="w-full overflow-hidden md:shrink-0 md:w-auto"
-                    >
-                      <div className="w-full p-1 md:w-48">
-                        <label htmlFor="cycle" className={style.label}>
-                          Cycle length
-                        </label>
-                        <input
-                          id="cycle"
-                          type="number"
-                          inputMode="numeric"
-                          min={21}
-                          max={45}
-                          value={cycle}
-                          onChange={(e) =>
-                            dispatch(setCycle(Number(e.target.value)))
-                          }
-                          className={style.input}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-
-              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
+                  <p className="text-muted text-sm lg:text-xl">
+                    Choose how you want to count, enter one date, and see your
+                    estimated due date and how far along you are.
+                  </p>
                   <div>
-                    <p className="font-display text-sm font-semibold text-ink">
-                      Remember my inputs
-                    </p>
-                    <p className="text-sm text-muted">
-                      We don&apos;t collect or store your information.
+                    <fieldset>
+                      <legend className="font-display text-[1rem] font-semibold">
+                        Count based on
+                      </legend>
+                      <div className="grid gap-1 rounded-xl border border-line bg-canvas p-1 grid-cols-3">
+                        {METHODS.map((m) => (
+                          <label
+                            key={m.id}
+                            className="cursor-pointer rounded-lg px-2 py-2.5 text-center content-center font-display text-sm font-semibold text-muted transition-colors has-checked:bg-ink has-checked:text-canvas has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
+                          >
+                            <input
+                              type="radio"
+                              name="method"
+                              value={m.id}
+                              checked={method === m.id}
+                              onChange={() => dispatch(setMethod(m.id))}
+                              className="sr-only"
+                            />
+                            {m.label}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+
+                    <motion.div layout className="overflow-hidden mt-1">
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.p
+                          key={method}
+                          initial={{ opacity: 0, y: 4, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: "auto" }}
+                          exit={{ opacity: 0, y: -4, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className=" text-sm sm:text-base text-muted min-h-12 lg:min-h-8"
+                        >
+                          {current.hint}
+                        </motion.p>
+                      </AnimatePresence>
+                    </motion.div>
+                  </div>
+
+                  <motion.div
+                    layout
+                    className="flex flex-col md:flex-row gap-2"
+                  >
+                    <motion.div
+                      layout
+                      className="flex-1 min-w-0 p-1"
+                      transition={{ duration: 0.3 }}
+                    >
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.label
+                          htmlFor="date"
+                          className={style.label}
+                          key={method}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {current.field}
+                        </motion.label>
+                      </AnimatePresence>
+                      <input
+                        id="date"
+                        type="date"
+                        value={date}
+                        onChange={(e) => dispatch(setDate(e.target.value))}
+                        className={style.input}
+                        {...bounds}
+                      />
+                    </motion.div>
+                    <AnimatePresence initial={false}>
+                      {method === "period" && (
+                        <motion.div
+                          key="cycle"
+                          {...cycleMotion}
+                          transition={{ duration: 0.3 }}
+                          className="w-full overflow-hidden md:shrink-0 md:w-auto"
+                        >
+                          <div className="w-full p-1 md:w-48">
+                            <label htmlFor="cycle" className={style.label}>
+                              Cycle length
+                            </label>
+                            <input
+                              id="cycle"
+                              type="number"
+                              inputMode="numeric"
+                              min={21}
+                              max={45}
+                              value={cycle}
+                              onChange={(e) =>
+                                dispatch(setCycle(Number(e.target.value)))
+                              }
+                              className={style.input}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+
+                  <div className="rounded-xl border border-line bg-canvas px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-display text-sm font-semibold text-ink">
+                          Remember my inputs
+                        </p>
+                        <p className="text-sm text-muted">
+                          We don&apos;t collect or store your information.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={rememberMe}
+                        aria-label="Remember my inputs"
+                        onClick={() => dispatch(setRememberMe(!rememberMe))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          rememberMe ? "bg-ink" : "bg-line"
+                        }`}
+                      >
+                        <motion.span
+                          className="inline-block h-5 w-5 rounded-full bg-canvas"
+                          animate={{ x: rememberMe ? 20 : 2 }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted">
+                      Inputs are saved only in your browser cookies. Clearing
+                      browser data will remove saved date, method, and cycle
+                      length.
                     </p>
                   </div>
+
                   <button
                     type="button"
-                    role="switch"
-                    aria-checked={rememberMe}
-                    aria-label="Remember my inputs"
-                    onClick={() => dispatch(setRememberMe(!rememberMe))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      rememberMe ? "bg-ink" : "bg-line"
-                    }`}
+                    onClick={() => {
+                      dispatch(setIsCalculating(true));
+                      dispatch(calculate());
+                      setTimeout(() => {
+                        dispatch(setIsCalculating(false));
+                      }, 1000);
+                    }}
+                    disabled={!canCalculate}
+                    className="mt-4 w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <motion.span
-                      className="inline-block h-5 w-5 rounded-full bg-canvas"
-                      animate={{ x: rememberMe ? 20 : 2 }}
-                      transition={{ duration: 0.2 }}
-                    />
+                    Calculate
                   </button>
-                </div>
-                <p className="mt-2 text-xs text-muted">
-                  Inputs are saved only in your browser cookies. Clearing
-                  browser data will remove saved date, method, and cycle length.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => dispatch(calculate())}
-                disabled={!canCalculate}
-                className="mt-4 w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Calculate
-              </button>
-              <AnimatePresence initial={false}>
-                {showOutOfRangeMessage && (
-                  <motion.p
-                    key="out-of-range"
-                    initial={{ opacity: 0, y: -4, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: "auto" }}
-                    exit={{ opacity: 0, y: -4, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="-mt-2 text-sm text-ink"
+                  <AnimatePresence initial={false}>
+                    {showOutOfRangeMessage && (
+                      <motion.p
+                        key="out-of-range"
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="-mt-2 text-sm text-ink"
+                      >
+                        {outOfRangeMessage}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="calculator-reset"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => dispatch(startNewCalculation())}
+                    className="w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer"
                   >
-                    {outOfRangeMessage}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="calculator-reset"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <button
-                type="button"
-                onClick={() => dispatch(startNewCalculation())}
-                className="w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer"
-              >
-                Calculate new
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.section>
-    </AnimatePresence>
+                    Calculate new
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

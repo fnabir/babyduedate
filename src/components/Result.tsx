@@ -107,10 +107,10 @@ const Result = () => {
           <motion.p
             layout
             variants={itemVariants}
-            className="max-w-2xl w-full text-center lg:text-xl"
+            className="max-w-2xl w-full text-center text-base sm:text-xl"
           >
             Today you are{" "}
-            <strong className="font-display font-semibold text-[22px] lg:text-3xl">
+            <strong className="font-display font-semibold text-lg lg:text-3xl">
               {plural(calculationResult.week, "week")}
               {calculationResult.daysAfterWeeks
                 ? ` and ${plural(calculationResult.daysAfterWeeks, "day")}`
@@ -125,7 +125,7 @@ const Result = () => {
             variants={itemVariants}
           >
             <p className="text-muted lg:text-xl">Estimated due date</p>
-            <p className="font-display text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
+            <p className="font-display text-3xl font-bold tracking-[-0.03em] sm:text-5xl">
               {formattedDate(calculationResult.due, LONG)}
             </p>
           </motion.div>
@@ -150,7 +150,7 @@ const Result = () => {
               Days
               {calculationResult.left < 0 ? " past " : " until "} due date
             </p>
-            <p className="font-display text-xl font-bold tracking-[-0.03em] sm:text-3xl">
+            <p className="font-display text-2xl font-bold tracking-[-0.03em] sm:text-3xl">
               {Math.abs(calculationResult.left)}
             </p>
           </motion.div>
