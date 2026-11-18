@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { METHODS } from "@/libs/methods";
 import { formattedDate, todayUTC } from "@/libs/utils";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import Loader from "./Loader";
 import {
   CALCULATOR_CYCLE_KEY,
   CALCULATOR_DATE_KEY,
@@ -21,10 +22,12 @@ import {
   selectCurrentMethod,
   selectCycle,
   selectDate,
+  selectIsCalculating,
   selectMethod,
   selectRememberMe,
   setCycle,
   setDate,
+  setIsCalculating,
   setMethod,
   setRememberMe,
   setToday,
@@ -45,6 +48,8 @@ const isMethod = (value: string | undefined): value is Method =>
 export default function Calculator() {
   const dispatch = useAppDispatch();
   const [cookiesReady, setCookiesReady] = useState(false);
+  const [isCheckingCookies, setIsCheckingCookies] = useState(true);
+  const isCalculating = useAppSelector(selectIsCalculating);
   const date = useAppSelector(selectDate);
   const cycle = useAppSelector(selectCycle);
   const method = useAppSelector(selectMethod);
@@ -89,22 +94,50 @@ export default function Calculator() {
     const rememberMeCookie = Cookies.get(CALCULATOR_REMEMBER_ME_KEY) === "true";
 
     if (!rememberMeCookie) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCookiesReady(true);
+      setTimeout(() => {
+        setIsCheckingCookies(false);
+        setCookiesReady(true);
+      }, 500);
       return;
     }
 
     const cookieMethod = Cookies.get(CALCULATOR_METHOD_KEY);
     const cookieDate = Cookies.get(CALCULATOR_DATE_KEY) ?? "";
     const cookieCycle = Number(Cookies.get(CALCULATOR_CYCLE_KEY));
-    dispatch(
-      hydrateFromCookies({
-        rememberMe: true,
-        method: isMethod(cookieMethod) ? cookieMethod : "period",
-        date: cookieDate,
-        cycle: Number.isFinite(cookieCycle) ? cookieCycle : 28,
-      }),
-    );
+    
+    if (isMethod(cookieMethod) && cookieDate && Number.isFinite(cookieCycle)) {
+      dispatch(
+        hydrateFromCookies({
+          rememberMe: true,
+          method: cookieMethod,
+          date: cookieDate,
+          cycle: cookieCycle,
+        }),
+      );
+      
+      setTimeout(() => {
+        setIsCheckingCookies(false);
+        dispatch(setIsCalculating(true));
+        dispatch(calculate());
+        
+        setTimeout(() => {
+          dispatch(setIsCalculating(false));
+        }, 1000);
+      }, 500);
+    } else {
+      dispatch(
+        hydrateFromCookies({
+          rememberMe: true,
+          method: isMethod(cookieMethod) ? cookieMethod : "period",
+          date: cookieDate,
+          cycle: Number.isFinite(cookieCycle) ? cookieCycle : 28,
+        }),
+      );
+      setTimeout(() => {
+        setIsCheckingCookies(false);
+      }, 500);
+    }
+    
     setCookiesReady(true);
   }, [dispatch]);
 
@@ -128,26 +161,33 @@ export default function Calculator() {
   }, [cookiesReady, rememberMe, method, date, cycle]);
 
   return (
-    <AnimatePresence>
-      <motion.section
-        layout
-        initial={{ opacity: 0, y: -10, height: 0 }}
-        animate={{ opacity: 1, y: 0, height: "auto" }}
-        exit={{ opacity: 0, y: -10, height: 0 }}
-        transition={{ duration: 0.3, delay: 0.3, layout: { duration: 0.3 } }}
-        aria-label="Calculator"
-        className="max-w-full w-2xl"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          {!showCalculateNew ? (
-            <motion.div
-              key="calculator-inputs"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-[1.25rem] border border-line bg-surface p-3 sm:p-6 space-y-4"
-            >
+    <>
+      <AnimatePresence mode="wait">
+        {isCheckingCookies ? (
+          <Loader key="loader-checking" message="Checking saved inputs" />
+        ) : isCalculating ? (
+          <Loader key="loader-calculating" message="Calculating" />
+        ) : (
+          <motion.section
+            key="calculator-section"
+            layout
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            transition={{ duration: 0.3, delay: 0.3, layout: { duration: 0.3 } }}
+            aria-label="Calculator"
+            className="max-w-full w-2xl"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {!showCalculateNew ? (
+                <motion.div
+                    key="calculator-inputs"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="rounded-[1.25rem] border border-line bg-surface p-3 sm:p-6 space-y-4"
+                  >
               <p className="text-muted text-sm lg:text-xl">
                 Choose how you want to count, enter one date, and see your
                 estimated due date and how far along you are.
@@ -286,7 +326,13 @@ export default function Calculator() {
 
               <button
                 type="button"
-                onClick={() => dispatch(calculate())}
+                onClick={() => {
+                  dispatch(setIsCalculating(true));
+                  dispatch(calculate());
+                  setTimeout(() => {
+                    dispatch(setIsCalculating(false));
+                  }, 1000);
+                }}
                 disabled={!canCalculate}
                 className="mt-4 w-full rounded-xl bg-ink hover:bg-ink/85 transition-colors py-1.5 sm:py-2 font-display text-base sm:text-lg font-semibold text-canvas cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -324,8 +370,10 @@ export default function Calculator() {
               </button>
             </motion.div>
           )}
-        </AnimatePresence>
-      </motion.section>
-    </AnimatePresence>
+            </AnimatePresence>
+          </motion.section>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
